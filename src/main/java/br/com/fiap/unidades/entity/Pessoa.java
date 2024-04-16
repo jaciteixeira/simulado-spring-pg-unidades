@@ -13,18 +13,27 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-
+@Entity
+@Table(name = "TB_PESSOA", uniqueConstraints = {
+        @UniqueConstraint(name = "UK_EMAL", columnNames = "EMAIL")
+})
 public class Pessoa {
-
-
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "SQ_PESSOA")
+    @SequenceGenerator(name = "SQ_PESSOA", sequenceName = "SQ_PESSOA", allocationSize = 1)
+    @Column(name = "ID_PESSOA")
     private Long id;
-
+    
+    @Column(name = "NM_PESSOA")
     private String nome;
 
+    @Column(name = "SOBREPESSOA")
     private String sobrenome;
 
+    @Column(name = "EMAIL")
     private String email;
 
+    @Column(name = "DT_NASCIMENTO")
     private LocalDate nascimento;
 
     @Enumerated(EnumType.STRING)
