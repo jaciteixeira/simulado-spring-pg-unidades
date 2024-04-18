@@ -4,8 +4,12 @@ import br.com.fiap.unidades.dto.request.ChefeRequest;
 import br.com.fiap.unidades.dto.request.PessoaRequest;
 import br.com.fiap.unidades.dto.response.ChefeResponse;
 import br.com.fiap.unidades.dto.response.PessoaResponse;
+import br.com.fiap.unidades.entity.Chefe;
 import br.com.fiap.unidades.entity.Pessoa;
+import br.com.fiap.unidades.entity.Unidade;
+import br.com.fiap.unidades.entity.Usuario;
 import br.com.fiap.unidades.service.ChefeService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.ExampleMatcher;
@@ -17,55 +21,69 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URI;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 @RestController
-
+@RequestMapping(value = "/chefe")
 public class ChefeResource implements ResourceDTO<ChefeRequest, ChefeResponse> {
 
     @Autowired
     private ChefeService service;
 
-    @GetMapping()
-    public ResponseEntity<Collection<ChefeResponse>> findAll(
-            @RequestParam(name = "usuarioId", required = false) String usuario,
-            @RequestParam(name = "substituto", required = false) String subistituto,
-            @RequestParam(name = "unidadeId", required = false) String unidade
-    ){
-        var pessoa = Pessoa.builder()
+    @GetMapping
+    public ResponseEntity<List<ChefeResponse>> findAll(
+            @RequestParam(name="substituto", required = false) String substituto,
+            @RequestParam(name="usuarioId", required = false) Long usuarioId,
+            @RequestParam(name="unidadeId", required = false) Long unidadeId
+    ) {
 
-                .build();
+        Chefe.ChefeBuilder chefeBuilder = Chefe.builder();
+
+        if(!Objects.isNull(substituto)) chefeBuilder.substituto(Boolean.parseBoolean(substituto));
+        if (!Objects.isNull(usuarioId)) chefeBuilder.usuario(Usuario.builder().id(usuarioId).build());
+        if (!Objects.isNull(unidadeId)) chefeBuilder.unidade(Unidade.builder().id(unidadeId).build());
+
+        Chefe chefe = chefeBuilder.build();
 
         ExampleMatcher matcher = ExampleMatcher.matchingAll()
                 .withIgnoreNullValues()
-                .withIgnoreCase()
-                .withMatcher("dadosCliente.nome", ExampleMatcher.GenericPropertyMatchers.contains());
-        Example<Pessoa> example = Example.of(pessoa, matcher);
+                .withIgnoreCase();
 
-        List<Pessoa> pesssoas = service.findAll(example);
+        Example<Chefe> example = Example.of(chefe, matcher);
 
-        return ResponseEntity.ok(pesssoas.stream().map(service::toResponse).toList());
+        System.out.println(example.toString());
+
+        List<ChefeResponse> list = service.findAll(example)
+                .stream()
+                .map(service::toResponse).toList();
+
+        if(list.isEmpty()) return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(list);
     }
+
 
     @GetMapping(value = "/{id}")
     @Override
     public ResponseEntity<ChefeResponse> findById(@PathVariable Long id) {
-        Pessoa pessoa = service.findById(id);
-        if(pessoa == null) return ResponseEntity.notFound().build();
-        return ResponseEntity.ok(service.toResponse(pessoa));
+        Chefe chefe = service.findById(id);
+        if(chefe == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(service.toResponse(chefe));
     }
 
     @Transactional
     @PostMapping
     @Override
-    public ResponseEntity<ChefeResponse> save(ChefeRequest r) {
-        Pessoa saved = service.save(service.toEntity(r));
-        var response = service.toResponse( saved );
-        if (response == null) return ResponseEntity.notFound().build();
+    public ResponseEntity<ChefeResponse> save(@RequestBody @Valid ChefeRequest r) {
+        Chefe entity = service.toEntity(r);
+        if(Objects.isNull(entity)) return ResponseEntity.badRequest().build();
 
-        URI uri = ServletUriComponentsBuilder
-                .fromCurrentRequest()
+        Chefe saved = service.save(entity);
+        ChefeResponse response = service.toResponse(saved);
+
+        var uri = ServletUriComponentsBuilder
+                .fromCurrentRequestUri()
                 .path( "/{id}" )
-                .buildAndExpand( response.id() )
+                .buildAndExpand( saved.getId() )
                 .toUri();
 
         return ResponseEntity.created( uri ).body( response );
